@@ -1,22 +1,5 @@
-// Enkelt oppsett av data (placeholder)
-const fotballKamper = [
-  { nummer: 1, hjemme: "Rosenborg", borte: "Molde", resultat: "2 - 1", status: "Ferdig", startTid: "2026-02-03T18:00:00" },
-  { nummer: 2, hjemme: "Brann", borte: "Viking", resultat: "1 - 1", status: "Direkte", startTid: "2026-02-03T20:15:00" },
-  { nummer: 3, hjemme: "Bodø/Glimt", borte: "Lillestrøm", resultat: "-", status: "Kommende", startTid: "2026-02-03T21:30:00" },
-  { nummer: 4, hjemme: "Stabæk", borte: "Sarpsborg 08", resultat: "0 - 3", status: "Ferdig", startTid: "2026-02-02T19:00:00" },
-  { nummer: 5, hjemme: "Haugesund", borte: "Odd", resultat: "-", status: "Kommende", startTid: "2026-02-05T18:30:00" },
-];
-
-const f1Lop = [
-  { nummer: 101, lop: "Bahrain Grand Prix", forer: "Oscar Piastri", lag: "McLaren", posisjon: "P1", tid: "1:32:18.552", status: "Ferdig", startTid: "2026-02-01T17:00:00" },
-  { nummer: 102, lop: "Saudi Arabian Grand Prix", forer: "Max Verstappen", lag: "Red Bull Racing", posisjon: "P2", tid: "+4.210s", status: "Ferdig", startTid: "2026-02-02T19:00:00" },
-  { nummer: 103, lop: "Australian Grand Prix", forer: "Lando Norris", lag: "McLaren", posisjon: "P1", tid: "LAP 38/58", status: "Direkte", startTid: "2026-02-03T07:00:00" },
-  { nummer: 104, lop: "Japanese Grand Prix", forer: "Charles Leclerc", lag: "Ferrari", posisjon: "-", tid: "Start 06:00", status: "Kommende", startTid: "2026-02-05T06:00:00" },
-  { nummer: 105, lop: "Monaco Grand Prix", forer: "Lewis Hamilton", lag: "Mercedes", posisjon: "-", tid: "Start 15:00", status: "Kommende", startTid: "2026-02-07T15:00:00" },
-];
-
-//Hente elementer fra html
 const sportVelger = document.querySelector("#sportVelger");
+const limitVelger = document.querySelector("#limitVelger");
 const sokInput = document.querySelector("#sokInput");
 const sokHjelp = document.querySelector("#sokHjelp");
 const idagKnapp = document.querySelector("#idagKnapp");
@@ -29,14 +12,35 @@ const idagAntall = document.querySelector("#idagAntall");
 const andreAntall = document.querySelector("#andreAntall");
 
 let visBareIDag = false;
+const LIMIT_STORAGE_KEY = "liveSportsDashboard.limit";
+let fotballKamper = [];
+let f1Lop = [];
 
-// Små hjelpefunksjoner
+function lesLimit() {
+  const valgt = Number(limitVelger?.value || 20);
+  if (!Number.isFinite(valgt)) return 20;
+  if (valgt !== 10 && valgt !== 20 && valgt !== 50) return 20;
+  return valgt;
+}
+
+function antallTekst(vist, totalt) {
+  if (vist < totalt) return `${vist}/${totalt}`;
+  return String(totalt);
+}
+
+if (limitVelger) {
+  const lagret = Number(localStorage.getItem(LIMIT_STORAGE_KEY));
+  if (Number.isFinite(lagret) && (lagret === 10 || lagret === 20 || lagret === 50)) {
+    limitVelger.value = String(lagret);
+  }
+}
+
 function sammeDag(a, b) {
   return a.toDateString() === b.toDateString();
 }
 
 function statusKlasse(tekst) {
-  const lav = tekst.toLowerCase();
+  const lav = String(tekst || "").toLowerCase();
   if (lav.includes("direkte")) return "direkte";
   if (lav.includes("ferdig")) return "ferdig";
   return "kommende";
@@ -49,25 +53,43 @@ function tidTekst(datoVerdi) {
 
 function fotballKort(kamp) {
   return `
+    <a class="kort-lenke" href="kamp.html?sport=fotball&id=${encodeURIComponent(kamp.nummer)}">
     <div class="kort">
       <div class="status ${statusKlasse(kamp.status)}">${kamp.status}</div>
-      <h3>${kamp.hjemme} vs ${kamp.borte}</h3>
+      <div class="lag-rad">
+        <div class="lag">
+          <img class="lag-logo" src="${kamp.hjemmeLogo || ""}" alt="${kamp.hjemme}" onerror="this.style.display='none'" />
+          <span>${kamp.hjemme}</span>
+        </div>
+        <span class="vs">vs</span>
+        <div class="lag">
+          <img class="lag-logo" src="${kamp.borteLogo || ""}" alt="${kamp.borte}" onerror="this.style.display='none'" />
+          <span>${kamp.borte}</span>
+        </div>
+      </div>
       <div class="resultat">${kamp.resultat}</div>
       <div class="detalj">Start: ${tidTekst(kamp.startTid)}</div>
+      <div class="detalj liga-rad">
+        <img class="liga-logo" src="${kamp.ligaLogo || ""}" alt="${kamp.liga || "Liga"}" onerror="this.style.display='none'" />
+        <span>${kamp.liga || ""} ${kamp.land ? `(${kamp.land})` : ""}</span>
+      </div>
     </div>
+    </a>
   `;
 }
 
 function f1Kort(lop) {
   return `
+    <a class="kort-lenke" href="kamp.html?sport=f1&id=${encodeURIComponent(lop.nummer)}">
     <div class="kort">
       <div class="status ${statusKlasse(lop.status)}">${lop.status}</div>
       <h3>${lop.lop}</h3>
       <div class="resultat">${lop.forer} · ${lop.lag}</div>
-      <div class="detalj">Posisjon: ${lop.posisjon}</div>
+      <div class="detalj">Posisjon/status: ${lop.posisjon}</div>
       <div class="detalj">Tid: ${lop.tid}</div>
       <div class="detalj">Start: ${tidTekst(lop.startTid)}</div>
     </div>
+    </a>
   `;
 }
 
@@ -75,8 +97,8 @@ function tegn() {
   const sport = sportVelger.value;
   const sok = sokInput.value.trim().toLowerCase();
   const idagDato = new Date();
+  const limit = lesLimit();
 
-  // Validering søk må være minst 2 tegn hvis det brukes
   if (sok.length === 1) {
     sokHjelp.classList.add("advarsel");
   } else {
@@ -84,47 +106,75 @@ function tegn() {
   }
 
   const data = sport === "fotball" ? fotballKamper : f1Lop;
-
-  // Filtrer hvis søk er brukt
   const filtrert = data.filter((element) => {
     if (sok.length < 2) return true;
     const tekst =
       sport === "fotball"
-        ? `${element.hjemme} ${element.borte}`
+        ? `${element.hjemme} ${element.borte} ${element.liga || ""}`
         : `${element.lop} ${element.forer} ${element.lag}`;
     return tekst.toLowerCase().includes(sok);
   });
 
   const idagListe = filtrert.filter((element) => sammeDag(new Date(element.startTid), idagDato));
   const andreListe = filtrert.filter((element) => !sammeDag(new Date(element.startTid), idagDato));
+  const idagVis = idagListe.slice(0, limit);
+  const andreVis = andreListe.slice(0, limit);
 
   if (sport === "fotball") {
     idagTittel.textContent = "Dagens kamper";
     andreTittel.textContent = "Tidligere og kommende kamper";
-    idagRutenett.innerHTML = idagListe.map(fotballKort).join("");
-    andreRutenett.innerHTML = andreListe.map(fotballKort).join("");
+    idagRutenett.innerHTML = idagVis.map(fotballKort).join("");
+    andreRutenett.innerHTML = andreVis.map(fotballKort).join("");
   } else {
-    idagTittel.textContent = "Dagens løp";
-    andreTittel.textContent = "Tidligere og kommende løp";
-    idagRutenett.innerHTML = idagListe.map(f1Kort).join("");
-    andreRutenett.innerHTML = andreListe.map(f1Kort).join("");
+    idagTittel.textContent = "Dagens lop";
+    andreTittel.textContent = "Tidligere og kommende lop";
+    idagRutenett.innerHTML = idagVis.map(f1Kort).join("");
+    andreRutenett.innerHTML = andreVis.map(f1Kort).join("");
   }
 
   if (visBareIDag) {
     andreRutenett.innerHTML = "";
     andreAntall.textContent = "0";
   } else {
-    andreAntall.textContent = andreListe.length;
+    andreAntall.textContent = antallTekst(andreVis.length, andreListe.length);
   }
 
-  idagAntall.textContent = idagListe.length;
+  idagAntall.textContent = antallTekst(idagVis.length, idagListe.length);
 }
 
-// Enkle event listeners
+async function lastData() {
+  try {
+    const [fotballRes, f1Res] = await Promise.all([
+      fetch("/api/football/latest?limit=2000"),
+      fetch("/api/f1/latest?limit=250"),
+    ]);
+    if (!fotballRes.ok || !f1Res.ok) {
+      throw new Error("Kunne ikke hente data fra backend.");
+    }
+
+    const [fotballPayload, f1Payload] = await Promise.all([fotballRes.json(), f1Res.json()]);
+    fotballKamper = fotballPayload.data || [];
+    f1Lop = f1Payload.data || [];
+    tegn();
+  } catch (error) {
+    idagRutenett.innerHTML = `<p class="tips advarsel">${error.message}</p>`;
+    andreRutenett.innerHTML = "";
+    idagAntall.textContent = "0";
+    andreAntall.textContent = "0";
+  }
+}
+
 sportVelger.addEventListener("change", () => {
   visBareIDag = false;
   tegn();
 });
+
+if (limitVelger) {
+  limitVelger.addEventListener("change", () => {
+    localStorage.setItem(LIMIT_STORAGE_KEY, String(lesLimit()));
+    tegn();
+  });
+}
 
 sokInput.addEventListener("input", tegn);
 
@@ -138,5 +188,4 @@ alleKnapp.addEventListener("click", () => {
   tegn();
 });
 
-// Start
-tegn();
+lastData();

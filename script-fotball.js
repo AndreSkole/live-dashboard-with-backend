@@ -1,13 +1,3 @@
-
-const fotballKamper = [
-  { nummer: 1, hjemme: "Rosenborg", borte: "Molde", resultat: "2 - 1", status: "Ferdig", startTid: "2026-02-03T18:00:00" },
-  { nummer: 2, hjemme: "Brann", borte: "Viking", resultat: "1 - 1", status: "Direkte", startTid: "2026-02-03T20:15:00" },
-  { nummer: 3, hjemme: "Bodø/Glimt", borte: "Lillestrøm", resultat: "-", status: "Kommende", startTid: "2026-02-03T21:30:00" },
-  { nummer: 4, hjemme: "Stabæk", borte: "Sarpsborg 08", resultat: "0 - 3", status: "Ferdig", startTid: "2026-02-02T19:00:00" },
-  { nummer: 5, hjemme: "Haugesund", borte: "Odd", resultat: "-", status: "Kommende", startTid: "2026-02-05T18:30:00" },
-];
-
-// Hent elementer
 const sokInput = document.querySelector("#sokInput");
 const sokHjelp = document.querySelector("#sokHjelp");
 const idagKnapp = document.querySelector("#idagKnapp");
@@ -18,13 +8,14 @@ const idagAntall = document.querySelector("#idagAntall");
 const andreAntall = document.querySelector("#andreAntall");
 
 let visBareIDag = false;
+let fotballKamper = [];
 
 function sammeDag(a, b) {
   return a.toDateString() === b.toDateString();
 }
 
 function statusKlasse(tekst) {
-  const lav = tekst.toLowerCase();
+  const lav = String(tekst || "").toLowerCase();
   if (lav.includes("direkte")) return "direkte";
   if (lav.includes("ferdig")) return "ferdig";
   return "kommende";
@@ -37,12 +28,28 @@ function tidTekst(datoVerdi) {
 
 function fotballKort(kamp) {
   return `
+    <a class="kort-lenke" href="kamp.html?sport=fotball&id=${encodeURIComponent(kamp.nummer)}">
     <div class="kort">
       <div class="status ${statusKlasse(kamp.status)}">${kamp.status}</div>
-      <h3>${kamp.hjemme} vs ${kamp.borte}</h3>
+      <div class="lag-rad">
+        <div class="lag">
+          <img class="lag-logo" src="${kamp.hjemmeLogo || ""}" alt="${kamp.hjemme}" onerror="this.style.display='none'" />
+          <span>${kamp.hjemme}</span>
+        </div>
+        <span class="vs">vs</span>
+        <div class="lag">
+          <img class="lag-logo" src="${kamp.borteLogo || ""}" alt="${kamp.borte}" onerror="this.style.display='none'" />
+          <span>${kamp.borte}</span>
+        </div>
+      </div>
       <div class="resultat">${kamp.resultat}</div>
       <div class="detalj">Start: ${tidTekst(kamp.startTid)}</div>
+      <div class="detalj liga-rad">
+        <img class="liga-logo" src="${kamp.ligaLogo || ""}" alt="${kamp.liga || "Liga"}" onerror="this.style.display='none'" />
+        <span>${kamp.liga || ""} ${kamp.land ? `(${kamp.land})` : ""}</span>
+      </div>
     </div>
+    </a>
   `;
 }
 
@@ -56,18 +63,14 @@ function tegn() {
     sokHjelp.classList.remove("advarsel");
   }
 
-  const filtrert = fotballKamper.filter(function (kamp) {
+  const filtrert = fotballKamper.filter((kamp) => {
     if (sok.length < 2) return true;
-    const tekst = `${kamp.hjemme} ${kamp.borte}`;
+    const tekst = `${kamp.hjemme} ${kamp.borte} ${kamp.liga || ""} ${kamp.land || ""}`;
     return tekst.toLowerCase().includes(sok);
   });
 
-  const idagListe = filtrert.filter(function (kamp) {
-    return sammeDag(new Date(kamp.startTid), idagDato);
-  });
-  const andreListe = filtrert.filter(function (kamp) {
-    return !sammeDag(new Date(kamp.startTid), idagDato);
-  });
+  const idagListe = filtrert.filter((kamp) => sammeDag(new Date(kamp.startTid), idagDato));
+  const andreListe = filtrert.filter((kamp) => !sammeDag(new Date(kamp.startTid), idagDato));
 
   idagRutenett.innerHTML = idagListe.map(fotballKort).join("");
   andreRutenett.innerHTML = andreListe.map(fotballKort).join("");
@@ -76,22 +79,37 @@ function tegn() {
     andreRutenett.innerHTML = "";
     andreAntall.textContent = "0";
   } else {
-    andreAntall.textContent = andreListe.length;
+    andreAntall.textContent = String(andreListe.length);
   }
 
-  idagAntall.textContent = idagListe.length;
+  idagAntall.textContent = String(idagListe.length);
+}
+
+async function lastKamper() {
+  try {
+    const response = await fetch("/api/football/latest?limit=2000");
+    if (!response.ok) throw new Error("Kunne ikke hente fotballdata.");
+    const payload = await response.json();
+    fotballKamper = payload.data || [];
+    tegn();
+  } catch (error) {
+    idagRutenett.innerHTML = `<p class="tips advarsel">${error.message}</p>`;
+    andreRutenett.innerHTML = "";
+    idagAntall.textContent = "0";
+    andreAntall.textContent = "0";
+  }
 }
 
 sokInput.addEventListener("input", tegn);
 
-idagKnapp.addEventListener("click", function () {
+idagKnapp.addEventListener("click", () => {
   visBareIDag = true;
   tegn();
 });
 
-alleKnapp.addEventListener("click", function () {
+alleKnapp.addEventListener("click", () => {
   visBareIDag = false;
   tegn();
 });
 
-tegn();
+lastKamper();

@@ -4,6 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Live Sports Dashboard</title>
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -35,6 +36,15 @@
         </div>
 
         <div class="kontroll">
+          <label for="limitVelger">Vis antall</label>
+          <select id="limitVelger">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+
+        <div class="kontroll">
           <label for="sokInput">Søk</label>
           <input
             id="sokInput"
@@ -42,9 +52,7 @@
             placeholder="Lag, fører eller løp..."
             autocomplete="off"
           />
-          <small id="sokHjelp" class="tips">
-            Søk må være minst 2 tegn.
-          </small>
+          <small id="sokHjelp" class="tips"> Søk må være minst 2 tegn. </small>
         </div>
 
         <div class="kontroll knapperad">
@@ -71,7 +79,7 @@
     </main>
 
     <footer class="bunn">
-      <p>Frontend-demo uten backend. Dataene er realistiske placeholders.</p>
+      <p>Data hentes fra backend og oppdateres automatisk hvert 15. minutt.</p>
     </footer>
 
     <script src="script.js"></script>

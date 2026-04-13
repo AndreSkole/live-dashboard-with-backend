@@ -1,13 +1,3 @@
-// Enkelt oppsett av data (placeholder)
-const f1Lop = [
-  { nummer: 101, lop: "Bahrain Grand Prix", forer: "Oscar Piastri", lag: "McLaren", posisjon: "P1", tid: "1:32:18.552", status: "Ferdig", startTid: "2026-02-01T17:00:00" },
-  { nummer: 102, lop: "Saudi Arabian Grand Prix", forer: "Max Verstappen", lag: "Red Bull Racing", posisjon: "P2", tid: "+4.210s", status: "Ferdig", startTid: "2026-02-02T19:00:00" },
-  { nummer: 103, lop: "Australian Grand Prix", forer: "Lando Norris", lag: "McLaren", posisjon: "P1", tid: "LAP 38/58", status: "Direkte", startTid: "2026-02-03T07:00:00" },
-  { nummer: 104, lop: "Japanese Grand Prix", forer: "Charles Leclerc", lag: "Ferrari", posisjon: "-", tid: "Start 06:00", status: "Kommende", startTid: "2026-02-05T06:00:00" },
-  { nummer: 105, lop: "Monaco Grand Prix", forer: "Lewis Hamilton", lag: "Mercedes", posisjon: "-", tid: "Start 15:00", status: "Kommende", startTid: "2026-02-07T15:00:00" },
-];
-
-// Hent elementer
 const sokInput = document.querySelector("#sokInput");
 const sokHjelp = document.querySelector("#sokHjelp");
 const idagKnapp = document.querySelector("#idagKnapp");
@@ -18,13 +8,14 @@ const idagAntall = document.querySelector("#idagAntall");
 const andreAntall = document.querySelector("#andreAntall");
 
 let visBareIDag = false;
+let f1Lop = [];
 
 function sammeDag(a, b) {
   return a.toDateString() === b.toDateString();
 }
 
 function statusKlasse(tekst) {
-  const lav = tekst.toLowerCase();
+  const lav = String(tekst || "").toLowerCase();
   if (lav.includes("direkte")) return "direkte";
   if (lav.includes("ferdig")) return "ferdig";
   return "kommende";
@@ -37,14 +28,17 @@ function tidTekst(datoVerdi) {
 
 function f1Kort(lop) {
   return `
+    <a class="kort-lenke" href="kamp.html?sport=f1&id=${encodeURIComponent(lop.nummer)}">
     <div class="kort">
       <div class="status ${statusKlasse(lop.status)}">${lop.status}</div>
       <h3>${lop.lop}</h3>
       <div class="resultat">${lop.forer} · ${lop.lag}</div>
-      <div class="detalj">Posisjon: ${lop.posisjon}</div>
+      <div class="detalj">Posisjon/status: ${lop.posisjon}</div>
       <div class="detalj">Tid: ${lop.tid}</div>
       <div class="detalj">Start: ${tidTekst(lop.startTid)}</div>
+      <div class="detalj">${lop.land || ""} ${lop.by ? `(${lop.by})` : ""}</div>
     </div>
+    </a>
   `;
 }
 
@@ -60,7 +54,7 @@ function tegn() {
 
   const filtrert = f1Lop.filter((lop) => {
     if (sok.length < 2) return true;
-    const tekst = `${lop.lop} ${lop.forer} ${lop.lag}`;
+    const tekst = `${lop.lop} ${lop.forer} ${lop.lag} ${lop.land || ""} ${lop.by || ""}`;
     return tekst.toLowerCase().includes(sok);
   });
 
@@ -74,10 +68,25 @@ function tegn() {
     andreRutenett.innerHTML = "";
     andreAntall.textContent = "0";
   } else {
-    andreAntall.textContent = andreListe.length;
+    andreAntall.textContent = String(andreListe.length);
   }
 
-  idagAntall.textContent = idagListe.length;
+  idagAntall.textContent = String(idagListe.length);
+}
+
+async function lastLop() {
+  try {
+    const response = await fetch("/api/f1/latest?limit=250");
+    if (!response.ok) throw new Error("Kunne ikke hente F1-data.");
+    const payload = await response.json();
+    f1Lop = payload.data || [];
+    tegn();
+  } catch (error) {
+    idagRutenett.innerHTML = `<p class="tips advarsel">${error.message}</p>`;
+    andreRutenett.innerHTML = "";
+    idagAntall.textContent = "0";
+    andreAntall.textContent = "0";
+  }
 }
 
 sokInput.addEventListener("input", tegn);
@@ -92,4 +101,4 @@ alleKnapp.addEventListener("click", () => {
   tegn();
 });
 
-tegn();
+lastLop();

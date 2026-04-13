@@ -1,0 +1,30 @@
+{
+  "name": "kdone",
+  "version": "1.0.0",
+  "description": "Live sports dashboard with API-SPORTS sync and PostgreSQL cache",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "echo \"No tests configured\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AndreSkole/live-sport-dashboard.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/AndreSkole/live-sport-dashboard/issues"
+  },
+  "homepage": "https://github.com/AndreSkole/live-sport-dashboard#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "node-cron": "^4.2.1",
+    "pg": "^8.18.0"
+  }
+}

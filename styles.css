@@ -206,11 +206,28 @@ h1 {
   gap: 12px;
 }
 
+.kort-lenke {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
 .kort {
   background: #2226e6;
   padding: 12px;
   border: 1px solid #ddd;
   border-radius: 4px;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.kort-lenke:hover .kort {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.18);
+}
+
+.kort-lenke:focus-visible .kort {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
 }
 
 .status {
@@ -239,6 +256,57 @@ h1 {
   font-size: 1rem;
 }
 
+.lag-rad {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 8px;
+}
+
+.lag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.lag span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lag-logo {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.stor-logo {
+  width: 28px;
+  height: 28px;
+}
+
+.vs {
+  font-size: 0.8rem;
+  color: #b5d1ff;
+}
+
+.liga-rad {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.liga-logo {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
 .detalj {
   color: #22DFF6;
   font-size: 0.85rem;
@@ -247,6 +315,32 @@ h1 {
 .resultat {
   font-weight: bold;
   margin: 8px 0;
+}
+
+.detalj-kort {
+  max-width: 700px;
+}
+
+.tabell-wrap {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+
+.resultat-tabell {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.resultat-tabell th,
+.resultat-tabell td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.resultat-tabell th {
+  color: #dff5ff;
 }
 
 .bunn {
