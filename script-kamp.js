@@ -1,5 +1,13 @@
 const detaljTittel = document.querySelector("#detaljTittel");
 const detaljInnhold = document.querySelector("#detaljInnhold");
+const API_BASE =
+  ["localhost", "127.0.0.1"].includes(window.location.hostname) && window.location.port !== "3000"
+    ? `${window.location.protocol}//${window.location.hostname}:3000`
+    : "";
+
+function apiUrl(path) {
+  return `${API_BASE}${path}`;
+}
 
 function tidTekst(datoVerdi) {
   const dato = new Date(datoVerdi);
@@ -67,6 +75,7 @@ function renderF1Results(payload) {
   }
 
   const top = payload.results.slice(0, 10);
+  // Vis bare topp 10 for å holde detaljsiden lett å skanne.
   const rows = top
     .map(
       (row) => `
@@ -112,7 +121,7 @@ async function lastDetalj() {
   }
 
   try {
-    const response = await fetch(`/api/events/${encodeURIComponent(sport)}/${encodeURIComponent(id)}`);
+    const response = await fetch(apiUrl(`/api/events/${encodeURIComponent(sport)}/${encodeURIComponent(id)}`));
     if (!response.ok) throw new Error("Fant ikkje kamp/løp.");
     const payload = await response.json();
 
@@ -120,7 +129,8 @@ async function lastDetalj() {
       renderFotball(payload.displayData, payload.updatedAt);
     } else {
       renderF1(payload.displayData, payload.updatedAt);
-      const resultsResponse = await fetch(`/api/f1/results/${encodeURIComponent(payload.externalId || id)}`);
+      // F1-resultatene lastes separat fordi de ofte er større og bare trengs på detaljsiden.
+      const resultsResponse = await fetch(apiUrl(`/api/f1/results/${encodeURIComponent(payload.externalId || id)}`));
       if (resultsResponse.ok) {
         const resultsPayload = await resultsResponse.json();
         renderF1Results(resultsPayload);

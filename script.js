@@ -15,6 +15,14 @@ let visBareIDag = false;
 const LIMIT_STORAGE_KEY = "liveSportsDashboard.limit";
 let fotballKamper = [];
 let f1Lop = [];
+const API_BASE =
+  ["localhost", "127.0.0.1"].includes(window.location.hostname) && window.location.port !== "3000"
+    ? `${window.location.protocol}//${window.location.hostname}:3000`
+    : "";
+
+function apiUrl(path) {
+  return `${API_BASE}${path}`;
+}
 
 function lesLimit() {
   const valgt = Number(limitVelger?.value || 20);
@@ -29,6 +37,7 @@ function antallTekst(vist, totalt) {
 }
 
 if (limitVelger) {
+  // Husk brukerens sist valgte antall kort mellom sideoppdateringer.
   const lagret = Number(localStorage.getItem(LIMIT_STORAGE_KEY));
   if (Number.isFinite(lagret) && (lagret === 10 || lagret === 20 || lagret === 50)) {
     limitVelger.value = String(lagret);
@@ -107,6 +116,7 @@ function tegn() {
 
   const data = sport === "fotball" ? fotballKamper : f1Lop;
   const filtrert = data.filter((element) => {
+    // Vi lar korte søk passere uten filtrering for å unngå støy på 1 tegn.
     if (sok.length < 2) return true;
     const tekst =
       sport === "fotball"
@@ -133,6 +143,7 @@ function tegn() {
   }
 
   if (visBareIDag) {
+    // Behold samme datasett, men skjul alt som ikke skjer i dag.
     andreRutenett.innerHTML = "";
     andreAntall.textContent = "0";
   } else {
@@ -144,9 +155,10 @@ function tegn() {
 
 async function lastData() {
   try {
+    // Hent begge sportene parallelt for raskere oppstart.
     const [fotballRes, f1Res] = await Promise.all([
-      fetch("/api/football/latest?limit=2000"),
-      fetch("/api/f1/latest?limit=250"),
+      fetch(apiUrl("/api/football/latest?limit=2000")),
+      fetch(apiUrl("/api/f1/latest?limit=250")),
     ]);
     if (!fotballRes.ok || !f1Res.ok) {
       throw new Error("Kunne ikke hente data fra backend.");

@@ -9,6 +9,14 @@ const andreAntall = document.querySelector("#andreAntall");
 
 let visBareIDag = false;
 let fotballKamper = [];
+const API_BASE =
+  ["localhost", "127.0.0.1"].includes(window.location.hostname) && window.location.port !== "3000"
+    ? `${window.location.protocol}//${window.location.hostname}:3000`
+    : "";
+
+function apiUrl(path) {
+  return `${API_BASE}${path}`;
+}
 
 function sammeDag(a, b) {
   return a.toDateString() === b.toDateString();
@@ -64,6 +72,7 @@ function tegn() {
   }
 
   const filtrert = fotballKamper.filter((kamp) => {
+    // Før 2 tegn viser vi bare hele lista i stedet for å gjøre et veldig bredt søk.
     if (sok.length < 2) return true;
     const tekst = `${kamp.hjemme} ${kamp.borte} ${kamp.liga || ""} ${kamp.land || ""}`;
     return tekst.toLowerCase().includes(sok);
@@ -76,6 +85,7 @@ function tegn() {
   andreRutenett.innerHTML = andreListe.map(fotballKort).join("");
 
   if (visBareIDag) {
+    // Skjul tidligere/kommende kamper uten å hente data på nytt.
     andreRutenett.innerHTML = "";
     andreAntall.textContent = "0";
   } else {
@@ -87,7 +97,7 @@ function tegn() {
 
 async function lastKamper() {
   try {
-    const response = await fetch("/api/football/latest?limit=2000");
+    const response = await fetch(apiUrl("/api/football/latest?limit=2000"));
     if (!response.ok) throw new Error("Kunne ikke hente fotballdata.");
     const payload = await response.json();
     fotballKamper = payload.data || [];

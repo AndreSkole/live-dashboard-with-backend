@@ -6,6 +6,14 @@ const fotballAntall = document.querySelector("#fotballAntall");
 const f1Antall = document.querySelector("#f1Antall");
 
 let timer = null;
+const API_BASE =
+  ["localhost", "127.0.0.1"].includes(window.location.hostname) && window.location.port !== "3000"
+    ? `${window.location.protocol}//${window.location.hostname}:3000`
+    : "";
+
+function apiUrl(path) {
+  return `${API_BASE}${path}`;
+}
 
 function statusKlasse(tekst) {
   const lav = String(tekst || "").toLowerCase();
@@ -73,12 +81,13 @@ async function sokFraBackend() {
   }
 
   if (sok.length < 2) {
+    // Vi venter med backend-søk til brukeren har skrevet litt mer.
     tegnResultater([], []);
     return;
   }
 
   try {
-    const response = await fetch(`/api/search?q=${encodeURIComponent(sok)}`);
+    const response = await fetch(apiUrl(`/api/search?q=${encodeURIComponent(sok)}`));
     if (!response.ok) throw new Error("Kunne ikke hente sokedata.");
     const payload = await response.json();
     tegnResultater(payload.fotball || [], payload.f1 || []);
@@ -91,6 +100,7 @@ async function sokFraBackend() {
 }
 
 sokInput.addEventListener("input", () => {
+  // Debounce begrenser antall kall mens brukeren skriver.
   if (timer) clearTimeout(timer);
   timer = setTimeout(sokFraBackend, 250);
 });

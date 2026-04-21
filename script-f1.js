@@ -9,6 +9,14 @@ const andreAntall = document.querySelector("#andreAntall");
 
 let visBareIDag = false;
 let f1Lop = [];
+const API_BASE =
+  ["localhost", "127.0.0.1"].includes(window.location.hostname) && window.location.port !== "3000"
+    ? `${window.location.protocol}//${window.location.hostname}:3000`
+    : "";
+
+function apiUrl(path) {
+  return `${API_BASE}${path}`;
+}
 
 function sammeDag(a, b) {
   return a.toDateString() === b.toDateString();
@@ -76,7 +84,7 @@ function tegn() {
 
 async function lastLop() {
   try {
-    const response = await fetch("/api/f1/latest?limit=250");
+    const response = await fetch(apiUrl("/api/f1/latest?limit=250"));
     if (!response.ok) throw new Error("Kunne ikke hente F1-data.");
     const payload = await response.json();
     f1Lop = payload.data || [];

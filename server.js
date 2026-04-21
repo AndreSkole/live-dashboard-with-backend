@@ -64,6 +64,7 @@ function toNorwegianStatusFromF1(status) {
 }
 
 async function initDb() {
+  // Én tabell for visningsdata på tvers av sportene gjør søk og listing enklere.
   await pool.query(`
     CREATE TABLE IF NOT EXISTS sports_events (
       id BIGSERIAL PRIMARY KEY,
@@ -111,6 +112,7 @@ async function fetchApi(baseUrl, endpoint, params = {}) {
 }
 
 async function upsertEvent(event) {
+  // Vi oppdaterer eksisterende rad hvis samme sport/external_id allerede finnes.
   await pool.query(
     `
       INSERT INTO sports_events (
@@ -195,11 +197,31 @@ async function saveFootballRows(rows) {
 async function syncFootballForDate(date) {
   const payload = await fetchApi(footballBaseUrl, "/fixtures", { date });
   const rows = payload.response || [];
-  await saveFootballRows(rows);
+  await replaceFootballRowsForDate(date, rows);
   return rows.length;
 }
 
+async function replaceFootballRowsForDate(date, rows) {
+  const from = `${date}T00:00:00Z`;
+  const toDate = new Date(`${date}T00:00:00Z`);
+  toDate.setUTCDate(toDate.getUTCDate() + 1);
+  const to = `${toIsoDateUtc(toDate)}T00:00:00Z`;
+
+  await pool.query(
+    `
+      DELETE FROM sports_events
+      WHERE sport = 'fotball'
+      AND start_time >= $1::timestamptz
+      AND start_time < $2::timestamptz
+    `,
+    [from, to]
+  );
+
+  await saveFootballRows(rows);
+}
+
 async function cleanupFootballWindow(now) {
+  // Behold bare en rullerende 7-dagers buffer bakover og framover.
   const fromDate = new Date(now);
   fromDate.setUTCDate(fromDate.getUTCDate() - 7);
   const toDate = new Date(now);
@@ -219,6 +241,7 @@ async function cleanupFootballWindow(now) {
 
 async function seedFootballWindow(now) {
   let count = 0;
+  // Første sync fyller hele vinduet, slik at UI-et har både historikk og kommende kamper.
   for (let offset = -7; offset <= 7; offset += 1) {
     const day = new Date(now);
     day.setUTCDate(day.getUTCDate() + offset);
@@ -237,9 +260,11 @@ async function syncFootball() {
   if (!footballWindowSeeded) {
     count += await seedFootballWindow(now);
   } else {
+    // Deretter holder vi bare dagens data varme på hver sync.
     count += await syncFootballForDate(today);
 
     if (footballWindowDayAdvancedAt !== today) {
+      // Når datoen skifter, henter vi inn den nye +7-dagen i vinduet.
       const plus7 = new Date(now);
       plus7.setUTCDate(plus7.getUTCDate() + 7);
       count += await syncFootballForDate(toIsoDateUtc(plus7));
@@ -261,6 +286,7 @@ async function resolveF1Season() {
     return cachedF1Season;
   }
 
+  // API-planen kan gi tilgang til ulike sesonger, så vi prøver kandidater til vi finner en som virker.
   const nowYear = new Date().getUTCFullYear();
   const candidates = [nowYear, nowYear - 1, nowYear - 2, nowYear - 3, 2024, 2023, 2022]
     .map((s) => Number(s))
@@ -281,6 +307,7 @@ async function resolveF1Season() {
 async function syncF1() {
   const season = await resolveF1Season();
   const payload = await fetchApi(f1BaseUrl, "/races", { season });
+  // Vi viser bare hovedløpene i dashboardet, ikke trening/kvalifisering.
   const rows = (payload.response || []).filter((race) => race?.type === "Race");
 
   for (const row of rows) {
@@ -323,6 +350,7 @@ async function syncF1() {
 }
 
 async function getF1RaceResultsWithCache(raceId) {
+  // Resultater endrer seg sjelden etter målgang, så vi cacher dem for å spare API-kall.
   const cacheResult = await pool.query(
     `
     SELECT payload, updated_at
@@ -380,6 +408,7 @@ async function syncAllSports() {
 }
 
 async function listEventsBySport(sport, limit = 2000) {
+  // Klamp limit for å unngå at klienten ber om urimelig store payloads.
   const safeLimit = Math.max(1, Math.min(Number(limit) || 2000, 5000));
   const result = await pool.query(
     `
@@ -429,6 +458,7 @@ app.get("/api/f1/latest", async (req, res) => {
 app.get("/api/search", async (req, res) => {
   const query = String(req.query.q || "").trim().toLowerCase();
   if (query.length < 2) {
+    // Unngå brede søk på enkeltbokstaver.
     return res.json({ fotball: [], f1: [] });
   }
 
@@ -550,6 +580,7 @@ async function startServer() {
 
   const runOnce = process.argv.includes("--sync-once");
   if (runOnce) {
+    // Praktisk for manuell sync i terminal eller cron-jobb uten å starte webserveren.
     console.log("Sync completed (run once mode).");
     await pool.end();
     return;
