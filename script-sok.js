@@ -15,6 +15,18 @@ function apiUrl(path) {
   return `${API_BASE}${path}`;
 }
 
+function debugInfo(message, extra) {
+  if (extra !== undefined) {
+    console.log(`[DEBUG][Sok] ${message}`, extra);
+    return;
+  }
+  console.log(`[DEBUG][Sok] ${message}`);
+}
+
+function debugError(message, error) {
+  console.error(`[DEBUG][Sok] ${message}`, error);
+}
+
 function statusKlasse(tekst) {
   const lav = String(tekst || "").toLowerCase();
   if (lav.includes("direkte")) return "direkte";
@@ -70,6 +82,7 @@ function tegnResultater(fotball, f1) {
   f1Rutenett.innerHTML = f1.map(f1Kort).join("");
   fotballAntall.textContent = String(fotball.length);
   f1Antall.textContent = String(f1.length);
+  debugInfo("Resultater rendret", { fotball: fotball.length, f1: f1.length });
 }
 
 async function sokFraBackend() {
@@ -81,17 +94,24 @@ async function sokFraBackend() {
   }
 
   if (sok.length < 2) {
-    // Vi venter med backend-søk til brukeren har skrevet litt mer.
+    debugInfo("Sok avbrutt fordi teksten er for kort", { sok });
     tegnResultater([], []);
     return;
   }
 
   try {
+    debugInfo("Starter sok mot backend", { sok });
     const response = await fetch(apiUrl(`/api/search?q=${encodeURIComponent(sok)}`));
     if (!response.ok) throw new Error("Kunne ikke hente sokedata.");
     const payload = await response.json();
+    debugInfo("Sok fullfort", {
+      sok,
+      fotball: (payload.fotball || []).length,
+      f1: (payload.f1 || []).length,
+    });
     tegnResultater(payload.fotball || [], payload.f1 || []);
   } catch (error) {
+    debugError("Feil ved sok", error);
     fotballRutenett.innerHTML = `<p class="tips advarsel">${error.message}</p>`;
     f1Rutenett.innerHTML = "";
     fotballAntall.textContent = "0";
@@ -102,7 +122,9 @@ async function sokFraBackend() {
 sokInput.addEventListener("input", () => {
   // Debounce begrenser antall kall mens brukeren skriver.
   if (timer) clearTimeout(timer);
+  debugInfo("Bruker skriver i sokefeltet", sokInput.value);
   timer = setTimeout(sokFraBackend, 250);
 });
 
+debugInfo("Sokescript lastet");
 tegnResultater([], []);

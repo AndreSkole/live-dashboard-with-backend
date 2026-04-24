@@ -18,6 +18,18 @@ function apiUrl(path) {
   return `${API_BASE}${path}`;
 }
 
+function debugInfo(message, extra) {
+  if (extra !== undefined) {
+    console.log(`[DEBUG][Fotball] ${message}`, extra);
+    return;
+  }
+  console.log(`[DEBUG][Fotball] ${message}`);
+}
+
+function debugError(message, error) {
+  console.error(`[DEBUG][Fotball] ${message}`, error);
+}
+
 function sammeDag(a, b) {
   return a.toDateString() === b.toDateString();
 }
@@ -93,16 +105,26 @@ function tegn() {
   }
 
   idagAntall.textContent = String(idagListe.length);
+
+  debugInfo("Rendring fullfort", {
+    sok,
+    visBareIDag,
+    idag: idagListe.length,
+    andre: visBareIDag ? 0 : andreListe.length,
+  });
 }
 
 async function lastKamper() {
   try {
+    debugInfo("Starter lasting av fotballdata");
     const response = await fetch(apiUrl("/api/football/latest?limit=2000"));
     if (!response.ok) throw new Error("Kunne ikke hente fotballdata.");
     const payload = await response.json();
     fotballKamper = payload.data || [];
+    debugInfo("Fotballdata lastet inn", { count: fotballKamper.length });
     tegn();
   } catch (error) {
+    debugError("Feil ved lasting av fotballdata", error);
     idagRutenett.innerHTML = `<p class="tips advarsel">${error.message}</p>`;
     andreRutenett.innerHTML = "";
     idagAntall.textContent = "0";
@@ -110,16 +132,22 @@ async function lastKamper() {
   }
 }
 
-sokInput.addEventListener("input", tegn);
+sokInput.addEventListener("input", () => {
+  debugInfo("Bruker skriver i sokefeltet", sokInput.value);
+  tegn();
+});
 
 idagKnapp.addEventListener("click", () => {
   visBareIDag = true;
+  debugInfo("Filter aktivert: dagens kamper");
   tegn();
 });
 
 alleKnapp.addEventListener("click", () => {
   visBareIDag = false;
+  debugInfo("Filter aktivert: vis alle kamper");
   tegn();
 });
 
+debugInfo("Fotball-script lastet");
 lastKamper();

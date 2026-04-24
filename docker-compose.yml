@@ -1,16 +1,16 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: sports_postgres
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: live_sports_backend
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: volsdals123
-      POSTGRES_DB: sportsdb
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL}
+      DB_SSL: "false"
     ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+      - "3000:3000"
 
-volumes:
-  pgdata:

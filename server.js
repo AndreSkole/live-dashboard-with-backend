@@ -9,6 +9,18 @@ const { Pool } = require("pg");
 const app = express();
 const port = Number(process.env.PORT || 3000);
 
+function debugInfo(scope, message, extra) {
+  if (extra !== undefined) {
+    console.log(`[DEBUG][${scope}] ${message}`, extra);
+    return;
+  }
+  console.log(`[DEBUG][${scope}] ${message}`);
+}
+
+function debugError(scope, message, error) {
+  console.error(`[DEBUG][${scope}] ${message}`, error);
+}
+
 function parseBoolean(value, defaultValue = false) {
   if (value == null || value === "") return defaultValue;
   return ["1", "true", "yes", "on"].includes(String(value).toLowerCase());
@@ -47,6 +59,10 @@ let footballWindowDayAdvancedAt = null;
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
+app.use((req, _res, next) => {
+  debugInfo("HTTP", `${req.method} ${req.url}`);
+  next();
+});
 
 function toNorwegianStatusFromFootball(shortCode) {
   const liveCodes = new Set(["1H", "2H", "ET", "BT", "P", "LIVE", "INT", "SUSP"]);
@@ -96,6 +112,8 @@ async function fetchApi(baseUrl, endpoint, params = {}) {
     url.searchParams.set(key, String(value));
   }
 
+  debugInfo("API", "Sender foresporsel til ekstern API", url.toString());
+
   const response = await fetch(url.toString(), {
     headers: {
       "x-apisports-key": process.env.API_SPORTS_KEY,
@@ -105,8 +123,11 @@ async function fetchApi(baseUrl, endpoint, params = {}) {
 
   if (!response.ok) {
     const text = await response.text();
+    debugError("API", `Ekstern API-feil (${response.status})`, text);
     throw new Error(`API request failed (${response.status}) ${url.pathname}: ${text}`);
   }
+
+  debugInfo("API", `Ekstern API svarte OK (${response.status})`, url.pathname);
 
   return response.json();
 }
@@ -389,22 +410,28 @@ async function getF1RaceResultsWithCache(raceId) {
 async function syncAllSports() {
   lastSyncStatus.startedAt = new Date().toISOString();
   lastSyncStatus.finishedAt = null;
+  debugInfo("SYNC", "Starter synkronisering av alle sporter");
 
   try {
     const footballCount = await syncFootball();
     lastSyncStatus.football = { ok: true, count: footballCount, error: null };
+    debugInfo("SYNC", "Fotball synkronisering fullfort", { count: footballCount });
   } catch (error) {
     lastSyncStatus.football = { ok: false, count: 0, error: error.message };
+    debugError("SYNC", "Fotball synkronisering feilet", error.message);
   }
 
   try {
     const f1 = await syncF1();
     lastSyncStatus.f1 = { ok: true, count: f1.count, error: null, season: f1.season };
+    debugInfo("SYNC", "F1 synkronisering fullfort", f1);
   } catch (error) {
     lastSyncStatus.f1 = { ok: false, count: 0, error: error.message, season: null };
+    debugError("SYNC", "F1 synkronisering feilet", error.message);
   }
 
   lastSyncStatus.finishedAt = new Date().toISOString();
+  debugInfo("SYNC", "Synkronisering ferdig", lastSyncStatus);
 }
 
 async function listEventsBySport(sport, limit = 2000) {
@@ -429,6 +456,7 @@ async function listEventsBySport(sport, limit = 2000) {
 app.get("/api/football/latest", async (req, res) => {
   try {
     const data = await listEventsBySport("fotball", req.query.limit);
+    debugInfo("ROUTE", "Returnerer fotball-data", { count: data.length, limit: req.query.limit || null });
     res.json({
       sport: "fotball",
       count: data.length,
@@ -436,6 +464,7 @@ app.get("/api/football/latest", async (req, res) => {
       data,
     });
   } catch (error) {
+    debugError("ROUTE", "Feil i /api/football/latest", error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -443,6 +472,7 @@ app.get("/api/football/latest", async (req, res) => {
 app.get("/api/f1/latest", async (req, res) => {
   try {
     const data = await listEventsBySport("f1", req.query.limit);
+    debugInfo("ROUTE", "Returnerer F1-data", { count: data.length, limit: req.query.limit || null });
     res.json({
       sport: "f1",
       count: data.length,
@@ -451,6 +481,7 @@ app.get("/api/f1/latest", async (req, res) => {
       data,
     });
   } catch (error) {
+    debugError("ROUTE", "Feil i /api/f1/latest", error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -458,7 +489,7 @@ app.get("/api/f1/latest", async (req, res) => {
 app.get("/api/search", async (req, res) => {
   const query = String(req.query.q || "").trim().toLowerCase();
   if (query.length < 2) {
-    // Unngå brede søk på enkeltbokstaver.
+    debugInfo("SEARCH", "Sok ignorert fordi teksten er for kort", { queryLength: query.length });
     return res.json({ fotball: [], f1: [] });
   }
 
@@ -482,8 +513,10 @@ app.get("/api/search", async (req, res) => {
       if (row.sport === "f1") f1.push(row.display_data);
     }
 
+    debugInfo("SEARCH", "Sok fullfort", { query, fotball: fotball.length, f1: f1.length });
     res.json({ fotball, f1 });
   } catch (error) {
+    debugError("SEARCH", "Feil under sok", error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -501,6 +534,7 @@ app.get("/api/f1/results/:raceId", async (req, res) => {
   try {
     const rows = await getF1RaceResultsWithCache(raceId);
     const winner = rows.find((row) => Number(row?.position) === 1) || null;
+    debugInfo("ROUTE", "Returnerer F1-race-resultater", { raceId, count: rows.length });
     res.json({
       raceId,
       winner,
@@ -508,6 +542,7 @@ app.get("/api/f1/results/:raceId", async (req, res) => {
       results: rows,
     });
   } catch (error) {
+    debugError("ROUTE", "Feil i /api/f1/results/:raceId", error.message);
     res.status(500).json({ error: error.message });
   }
 });
@@ -533,10 +568,12 @@ app.get("/api/events/:sport/:id", async (req, res) => {
     );
 
     if (result.rows.length === 0) {
+      debugInfo("ROUTE", "Fant ikke event", { sport, externalId });
       return res.status(404).json({ error: "Event not found." });
     }
 
     const row = result.rows[0];
+    debugInfo("ROUTE", "Returnerer eventdetaljer", { sport, externalId });
     res.json({
       sport: row.sport,
       externalId: row.external_id,
@@ -545,12 +582,14 @@ app.get("/api/events/:sport/:id", async (req, res) => {
       sourcePayload: row.source_payload,
     });
   } catch (error) {
+    debugError("ROUTE", "Feil i /api/events/:sport/:id", error.message);
     res.status(500).json({ error: error.message });
   }
 });
 
 app.post("/api/sync-now", async (_req, res) => {
   await syncAllSports();
+  debugInfo("ROUTE", "Manuell synkronisering fullfort");
   res.json({ ok: true, status: lastSyncStatus });
 });
 
@@ -558,9 +597,11 @@ app.get("/api/health", (_req, res) => {
   pool
     .query("SELECT 1 AS ok")
     .then(() => {
+      debugInfo("HEALTH", "Databasekobling OK");
       res.json({ ok: true, database: "connected" });
     })
     .catch((error) => {
+      debugError("HEALTH", "Databasekobling feilet", error.message);
       res.status(500).json({
         ok: false,
         database: "disconnected",
@@ -575,7 +616,9 @@ app.get("/", (_req, res) => {
 
 async function startServer() {
   await pool.query("SELECT NOW()");
+  debugInfo("STARTUP", "Databasekontakt testet OK");
   await initDb();
+  debugInfo("STARTUP", "Database initialisert");
   await syncAllSports();
 
   const runOnce = process.argv.includes("--sync-once");

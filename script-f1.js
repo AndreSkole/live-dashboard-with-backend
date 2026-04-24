@@ -18,6 +18,18 @@ function apiUrl(path) {
   return `${API_BASE}${path}`;
 }
 
+function debugInfo(message, extra) {
+  if (extra !== undefined) {
+    console.log(`[DEBUG][F1] ${message}`, extra);
+    return;
+  }
+  console.log(`[DEBUG][F1] ${message}`);
+}
+
+function debugError(message, error) {
+  console.error(`[DEBUG][F1] ${message}`, error);
+}
+
 function sammeDag(a, b) {
   return a.toDateString() === b.toDateString();
 }
@@ -80,16 +92,26 @@ function tegn() {
   }
 
   idagAntall.textContent = String(idagListe.length);
+
+  debugInfo("Rendring fullfort", {
+    sok,
+    visBareIDag,
+    idag: idagListe.length,
+    andre: visBareIDag ? 0 : andreListe.length,
+  });
 }
 
 async function lastLop() {
   try {
+    debugInfo("Starter lasting av F1-data");
     const response = await fetch(apiUrl("/api/f1/latest?limit=250"));
     if (!response.ok) throw new Error("Kunne ikke hente F1-data.");
     const payload = await response.json();
     f1Lop = payload.data || [];
+    debugInfo("F1-data lastet inn", { count: f1Lop.length });
     tegn();
   } catch (error) {
+    debugError("Feil ved lasting av F1-data", error);
     idagRutenett.innerHTML = `<p class="tips advarsel">${error.message}</p>`;
     andreRutenett.innerHTML = "";
     idagAntall.textContent = "0";
@@ -97,16 +119,22 @@ async function lastLop() {
   }
 }
 
-sokInput.addEventListener("input", tegn);
+sokInput.addEventListener("input", () => {
+  debugInfo("Bruker skriver i sokefeltet", sokInput.value);
+  tegn();
+});
 
 idagKnapp.addEventListener("click", () => {
   visBareIDag = true;
+  debugInfo("Filter aktivert: dagens lop");
   tegn();
 });
 
 alleKnapp.addEventListener("click", () => {
   visBareIDag = false;
+  debugInfo("Filter aktivert: vis alle lop");
   tegn();
 });
 
+debugInfo("F1-script lastet");
 lastLop();

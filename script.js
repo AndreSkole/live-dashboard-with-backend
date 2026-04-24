@@ -24,6 +24,18 @@ function apiUrl(path) {
   return `${API_BASE}${path}`;
 }
 
+function debugInfo(message, extra) {
+  if (extra !== undefined) {
+    console.log(`[DEBUG][Forside] ${message}`, extra);
+    return;
+  }
+  console.log(`[DEBUG][Forside] ${message}`);
+}
+
+function debugError(message, error) {
+  console.error(`[DEBUG][Forside] ${message}`, error);
+}
+
 function lesLimit() {
   const valgt = Number(limitVelger?.value || 20);
   if (!Number.isFinite(valgt)) return 20;
@@ -151,11 +163,20 @@ function tegn() {
   }
 
   idagAntall.textContent = antallTekst(idagVis.length, idagListe.length);
+
+  debugInfo("Rendring fullfort", {
+    sport,
+    sok,
+    visBareIDag,
+    idag: idagListe.length,
+    andre: visBareIDag ? 0 : andreListe.length,
+    limit,
+  });
 }
 
 async function lastData() {
   try {
-    // Hent begge sportene parallelt for raskere oppstart.
+    debugInfo("Starter lasting av data fra backend");
     const [fotballRes, f1Res] = await Promise.all([
       fetch(apiUrl("/api/football/latest?limit=2000")),
       fetch(apiUrl("/api/f1/latest?limit=250")),
@@ -167,8 +188,13 @@ async function lastData() {
     const [fotballPayload, f1Payload] = await Promise.all([fotballRes.json(), f1Res.json()]);
     fotballKamper = fotballPayload.data || [];
     f1Lop = f1Payload.data || [];
+    debugInfo("Data lastet inn", {
+      fotball: fotballKamper.length,
+      f1: f1Lop.length,
+    });
     tegn();
   } catch (error) {
+    debugError("Feil ved lasting av data", error);
     idagRutenett.innerHTML = `<p class="tips advarsel">${error.message}</p>`;
     andreRutenett.innerHTML = "";
     idagAntall.textContent = "0";
@@ -178,26 +204,34 @@ async function lastData() {
 
 sportVelger.addEventListener("change", () => {
   visBareIDag = false;
+  debugInfo("Bruker byttet sport", sportVelger.value);
   tegn();
 });
 
 if (limitVelger) {
   limitVelger.addEventListener("change", () => {
     localStorage.setItem(LIMIT_STORAGE_KEY, String(lesLimit()));
+    debugInfo("Bruker endret limit", lesLimit());
     tegn();
   });
 }
 
-sokInput.addEventListener("input", tegn);
+sokInput.addEventListener("input", () => {
+  debugInfo("Bruker skriver i sokefeltet", sokInput.value);
+  tegn();
+});
 
 idagKnapp.addEventListener("click", () => {
   visBareIDag = true;
+  debugInfo("Filter aktivert: bare i dag");
   tegn();
 });
 
 alleKnapp.addEventListener("click", () => {
   visBareIDag = false;
+  debugInfo("Filter aktivert: vis alle");
   tegn();
 });
 
+debugInfo("Forside-script lastet");
 lastData();
